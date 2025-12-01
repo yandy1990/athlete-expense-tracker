@@ -3,11 +3,14 @@
   <head>
     <link rel="manifest" href="manifest.json" />
 
-<!-- iOS home screen settings -->
-<meta name="apple-mobile-web-app-capable" content="yes" />
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-<meta name="apple-mobile-web-app-title" content="Athlete Expenses" />
-<link rel="apple-touch-icon" href="icon-192.png" />
+    <!-- iOS home screen settings -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
+    <meta name="apple-mobile-web-app-title" content="Athlete Expenses" />
+    <link rel="apple-touch-icon" href="icon-192.png" />
 
     <meta charset="UTF-8" />
     <title>Athlete Expense Tracker (Supabase + FX + Receipts)</title>
@@ -16,8 +19,14 @@
     <script src="https://cdn.tailwindcss.com"></script>
 
     <!-- React -->
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script
+      crossorigin
+      src="https://unpkg.com/react@18/umd/react.development.js"
+    ></script>
+    <script
+      crossorigin
+      src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"
+    ></script>
 
     <!-- Day.js -->
     <script src="https://unpkg.com/dayjs@1.11.11/dayjs.min.js"></script>
@@ -27,6 +36,9 @@
 
     <!-- jsPDF for PDF export -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+    <!-- JSZip for backup ZIPs -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
     <!-- Babel (JSX) -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -38,9 +50,10 @@
     <script type="text/babel" data-presets="env,react">
       const { useState, useEffect, useMemo } = React;
 
-      // 🔴 Replace these with your Supabase values
-      const SUPABASE_URL = "https://jpyukcuwmokvhvvcxuot.supabase.co"; // e.g. https://xxxx.supabase.co
-      const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpweXVrY3V3bW9rdmh2dmN4dW90Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ1NDczMTcsImV4cCI6MjA4MDEyMzMxN30.TAElhnXbFm1nyvqpQNiyQTcQUPSltcKtr2Ul8VSxBhg";
+      // 🔴 Supabase credentials (same as you had)
+      const SUPABASE_URL = "https://jpyukcuwmokvhvvcxuot.supabase.co";
+      const SUPABASE_ANON_KEY =
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpweXVrY3V3bW9rdmh2dmN4dW90Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ1NDczMTcsImV4cCI6MjA4MDEyMzMxN30.TAElhnXbFm1nyvqpQNiyQTcQUPSltcKtr2Ul8VSxBhg";
 
       const supabaseClient = supabase.createClient(
         SUPABASE_URL,
@@ -107,7 +120,10 @@
       }
 
       function downloadFile(filename, contents, mime) {
-        const blob = new Blob([contents], { type: mime });
+        const blob =
+          contents instanceof Blob
+            ? contents
+            : new Blob([contents], { type: mime });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
@@ -166,7 +182,9 @@
             alert("Signup error: " + error.message);
             return;
           }
-          alert("Signup OK. You may need to verify your email depending on settings.");
+          alert(
+            "Signup OK. You may need to verify your email depending on settings."
+          );
         }
 
         async function handleLogout() {
@@ -254,7 +272,8 @@
                 </form>
 
                 <p className="mt-3 text-[10px] text-slate-500">
-                  Data is stored in Supabase (per account), not just in this browser.
+                  Data is stored in Supabase (per account), not just in this
+                  browser.
                 </p>
               </div>
             </div>
@@ -470,8 +489,8 @@
               />
               {!knownFX && normCurrency && (
                 <p className="mt-1 text-[11px] text-amber-700">
-                  This currency is not auto-supported. Please enter a manual
-                  FX rate to USD below.
+                  This currency is not auto-supported. Please enter a manual FX
+                  rate to USD below.
                 </p>
               )}
             </div>
@@ -563,6 +582,97 @@
               </button>
             </div>
           </form>
+        );
+      }
+
+      // ----- Filters Panel -----
+      function FiltersPanel({ allExpenses, filters, onChange }) {
+        const tripOptions = useMemo(() => {
+          const s = new Set();
+          allExpenses.forEach((e) => {
+            if (e.trip) s.add(e.trip);
+          });
+          return Array.from(s).sort();
+        }, [allExpenses]);
+
+        const categoryOptions = useMemo(() => {
+          const s = new Set();
+          allExpenses.forEach((e) => {
+            if (e.category) s.add(e.category);
+          });
+          return Array.from(s).sort();
+        }, [allExpenses]);
+
+        function handleChange(key, value) {
+          onChange({ ...filters, [key]: value });
+        }
+
+        return (
+          <div className="bg-white rounded-2xl shadow p-4 md:p-6 mb-6">
+            <h2 className="text-lg font-semibold text-slate-800 mb-3">
+              Filters
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1">
+                  From
+                </label>
+                <input
+                  type="date"
+                  value={filters.from}
+                  onChange={(e) => handleChange("from", e.target.value)}
+                  className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
+                  placeholder="mm/dd/yyyy"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1">
+                  To
+                </label>
+                <input
+                  type="date"
+                  value={filters.to}
+                  onChange={(e) => handleChange("to", e.target.value)}
+                  className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
+                  placeholder="mm/dd/yyyy"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1">
+                  Tournament / Location / Event
+                </label>
+                <select
+                  value={filters.trip}
+                  onChange={(e) => handleChange("trip", e.target.value)}
+                  className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
+                >
+                  <option value="All">All</option>
+                  {tripOptions.map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1">
+                  Category
+                </label>
+                <select
+                  value={filters.category}
+                  onChange={(e) => handleChange("category", e.target.value)}
+                  className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
+                >
+                  <option value="All">All</option>
+                  {categoryOptions.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
         );
       }
 
@@ -1031,8 +1141,8 @@
               Export
             </h2>
             <p className="text-[11px] text-slate-500 mb-3">
-              CSV opens in Excel / Numbers. Exports use all your current
-              expenses for this account.
+              CSV opens in Excel / Numbers. Exports use the{" "}
+              <strong>currently filtered</strong> expenses.
             </p>
             <div className="flex flex-wrap gap-2 text-xs">
               <button
@@ -1070,6 +1180,183 @@
         );
       }
 
+      // ----- Backup & Restore Panel -----
+      function BackupRestorePanel({ allExpenses, userId, onImported }) {
+        const [exporting, setExporting] = useState(false);
+        const [importing, setImporting] = useState(false);
+
+        async function handleExportBackup() {
+          if (!allExpenses.length) {
+            alert("No expenses to back up.");
+            return;
+          }
+          const JSZip = window.JSZip;
+          if (!JSZip) {
+            alert("JSZip not loaded");
+            return;
+          }
+          try {
+            setExporting(true);
+            const zip = new JSZip();
+            // Main data file
+            zip.file(
+              "expenses.json",
+              JSON.stringify(allExpenses, null, 2),
+              { binary: false }
+            );
+
+            // Optional: include copies of receipts for offline archive
+            const receiptsFolder = zip.folder("receipts");
+            const tasks = [];
+            allExpenses.forEach((e, ei) => {
+              if (!e.receipts || !e.receipts.length) return;
+              e.receipts.forEach((r, ri) => {
+                if (!r.url) return;
+                const safeName =
+                  (r.name || "receipt") + "_" + ei + "_" + ri;
+                const filename = safeName.replace(/[^a-zA-Z0-9._-]/g, "_");
+                tasks.push(
+                  fetch(r.url)
+                    .then((res) => res.arrayBuffer())
+                    .then((buf) => {
+                      receiptsFolder.file(filename, buf);
+                    })
+                    .catch(() => {
+                      // ignore failing individual files
+                    })
+                );
+              });
+            });
+
+            await Promise.all(tasks);
+
+            const blob = await zip.generateAsync({ type: "blob" });
+            downloadFile(
+              "athlete_expenses_backup.zip",
+              blob,
+              "application/zip"
+            );
+          } finally {
+            setExporting(false);
+          }
+        }
+
+        async function handleImportBackup(event) {
+          const file = event.target.files[0];
+          if (!file) return;
+          const JSZip = window.JSZip;
+          setImporting(true);
+          try {
+            let expensesData = null;
+
+            if (file.name.toLowerCase().endsWith(".json")) {
+              const text = await file.text();
+              expensesData = JSON.parse(text);
+            } else if (file.name.toLowerCase().endsWith(".zip")) {
+              if (!JSZip) {
+                alert("JSZip not loaded");
+                return;
+              }
+              const buf = await file.arrayBuffer();
+              const zip = await JSZip.loadAsync(buf);
+              const jsonFile = zip.file("expenses.json");
+              if (!jsonFile) {
+                alert("Backup ZIP does not contain expenses.json.");
+                return;
+              }
+              const text = await jsonFile.async("string");
+              expensesData = JSON.parse(text);
+            } else {
+              alert("Unsupported backup file type. Use .json or .zip.");
+              return;
+            }
+
+            if (!Array.isArray(expensesData)) {
+              alert("Invalid backup format (expected an array).");
+              return;
+            }
+
+            // Insert for current user
+            const rowsToInsert = expensesData.map((e) => {
+              const {
+                id,
+                user_id,
+                created_at,
+                updated_at,
+                inserted_at,
+                ...rest
+              } = e;
+              return {
+                ...rest,
+                user_id: userId,
+              };
+            });
+
+            // To stay under row limits we can insert in small batches
+            const chunkSize = 100;
+            for (let i = 0; i < rowsToInsert.length; i += chunkSize) {
+              const chunk = rowsToInsert.slice(i, i + chunkSize);
+              const { error } = await supabaseClient
+                .from("expenses")
+                .insert(chunk);
+              if (error) {
+                console.error(error);
+                alert("Error importing some entries: " + error.message);
+                break;
+              }
+            }
+
+            await onImported();
+            alert("Backup imported successfully.");
+          } catch (err) {
+            console.error(err);
+            alert("Error importing backup: " + err.message);
+          } finally {
+            setImporting(false);
+            // Reset file input so same file can be chosen again if needed
+            event.target.value = "";
+          }
+        }
+
+        return (
+          <div className="bg-white rounded-2xl shadow p-4 md:p-6 mb-6">
+            <h2 className="text-lg font-semibold text-slate-800 mb-2">
+              Backup &amp; Restore
+            </h2>
+            <p className="text-[11px] text-slate-500 mb-3">
+              Export a full backup (including receipts &amp; FX info) as a
+              <strong> JSON+ZIP</strong> file. You can import it on another
+              computer or after reinstalling your browser. Receipts are kept in
+              Supabase, and copies are included in the ZIP for archive.
+            </p>
+            <div className="flex flex-wrap gap-3 text-xs items-center">
+              <button
+                onClick={handleExportBackup}
+                disabled={exporting}
+                className={
+                  "px-3 py-2 rounded-xl border border-slate-300 hover:bg-slate-50 " +
+                  (exporting ? "opacity-60 cursor-wait" : "")
+                }
+              >
+                {exporting ? "Exporting..." : "Export Backup (.zip)"}
+              </button>
+              <label className="inline-flex items-center px-3 py-2 rounded-xl border border-slate-300 hover:bg-slate-50 cursor-pointer">
+                <span>
+                  {importing ? "Importing..." : "Import Backup (.json/.zip)"}
+                </span>
+                <input
+                  type="file"
+                  accept=".json,.zip"
+                  className="hidden"
+                  onChange={handleImportBackup}
+                  disabled={importing}
+                />
+              </label>
+            </div>
+          </div>
+        );
+      }
+
       // ----- Expense Table -----
       function ExpenseTable({ expenses, onDelete }) {
         if (!expenses.length) {
@@ -1091,7 +1378,9 @@
                   <tr className="border-b border-slate-200 text-left uppercase text-[10px] text-slate-500">
                     <th className="py-2 pr-3">Date</th>
                     <th className="py-2 pr-3">Type</th>
-                    <th className="py-2 pr-3">Tournament / Location / Event</th>
+                    <th className="py-2 pr-3">
+                      Tournament / Location / Event
+                    </th>
                     <th className="py-2 pr-3">Region</th>
                     <th className="py-2 pr-3">Category</th>
                     <th className="py-2 pr-3 text-right">Amount</th>
@@ -1131,9 +1420,7 @@
                         {normalizeCurrency(e.currency)}
                       </td>
                       <td className="py-2 pr-3 text-right whitespace-nowrap">
-                        {e.amount_usd != null
-                          ? e.amount_usd.toFixed(2)
-                          : "-"}
+                        {e.amount_usd != null ? e.amount_usd.toFixed(2) : "-"}
                       </td>
                       <td className="py-2 pr-3 whitespace-nowrap">
                         {e.payer || "-"}
@@ -1214,25 +1501,48 @@
         const [loading, setLoading] = useState(true);
         const [saving, setSaving] = useState(false);
 
-        useEffect(() => {
-          async function load() {
-            setLoading(true);
-            const { data, error } = await supabaseClient
-              .from("expenses")
-              .select("*")
-              .eq("user_id", session.user.id)
-              .order("date", { ascending: true });
-            if (error) {
-              console.error(error);
-              alert("Error loading expenses: " + error.message);
-              setExpenses([]);
-            } else {
-              setExpenses(data || []);
-            }
-            setLoading(false);
+        const [filters, setFilters] = useState({
+          from: "",
+          to: "",
+          trip: "All",
+          category: "All",
+        });
+
+        async function loadExpenses() {
+          setLoading(true);
+          const { data, error } = await supabaseClient
+            .from("expenses")
+            .select("*")
+            .eq("user_id", session.user.id)
+            .order("date", { ascending: true });
+          if (error) {
+            console.error(error);
+            alert("Error loading expenses: " + error.message);
+            setExpenses([]);
+          } else {
+            setExpenses(data || []);
           }
-          load();
+          setLoading(false);
+        }
+
+        useEffect(() => {
+          loadExpenses();
         }, [session.user.id]);
+
+        const filteredExpenses = useMemo(() => {
+          return expenses.filter((e) => {
+            if (filters.from && e.date < filters.from) return false;
+            if (filters.to && e.date > filters.to) return false;
+            if (filters.trip !== "All" && (e.trip || "") !== filters.trip)
+              return false;
+            if (
+              filters.category !== "All" &&
+              (e.category || "") !== filters.category
+            )
+              return false;
+            return true;
+          });
+        }, [expenses, filters]);
 
         async function computeFx(exp) {
           const code = normalizeCurrency(exp.currency);
@@ -1421,16 +1731,30 @@
 
             <ExpenseForm onAdd={handleAdd} saving={saving} />
 
+            <FiltersPanel
+              allExpenses={expenses}
+              filters={filters}
+              onChange={setFilters}
+            />
+
             {loading ? (
               <div className="bg-white rounded-2xl shadow p-4 md:p-6 mb-6 text-sm text-slate-500">
                 Loading expenses...
               </div>
             ) : (
               <>
-                <Summary expenses={expenses} />
-                <ExportPanel expenses={expenses} />
-                <TournamentDashboard expenses={expenses} />
-                <ExpenseTable expenses={expenses} onDelete={handleDelete} />
+                <Summary expenses={filteredExpenses} />
+                <BackupRestorePanel
+                  allExpenses={expenses}
+                  userId={session.user.id}
+                  onImported={loadExpenses}
+                />
+                <ExportPanel expenses={filteredExpenses} />
+                <TournamentDashboard expenses={filteredExpenses} />
+                <ExpenseTable
+                  expenses={filteredExpenses}
+                  onDelete={handleDelete}
+                />
               </>
             )}
           </main>
