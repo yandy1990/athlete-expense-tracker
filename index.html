@@ -134,7 +134,7 @@
         URL.revokeObjectURL(url);
       }
 
-      // ----- AuthGate -----
+            // ----- AuthGate -----
       function AuthGate({ children }) {
         const [session, setSession] = useState(null);
         const [loading, setLoading] = useState(true);
@@ -143,14 +143,37 @@
         const [email, setEmail] = useState("");
         const [password, setPassword] = useState("");
 
+        const [disclaimerAccepted, setDisclaimerAccepted] = useState(false);
+
         useEffect(() => {
           supabaseClient.auth.getSession().then(({ data }) => {
-            setSession(data.session);
+            const sess = data.session;
+            setSession(sess);
+
+            if (sess) {
+              const accepted =
+                window.localStorage.getItem(
+                  "athlete_expense_disclaimer_v1"
+                ) === "true";
+              setDisclaimerAccepted(accepted);
+            }
+
             setLoading(false);
           });
 
           const { data } = supabaseClient.auth.onAuthStateChange(
-            (_event, session) => setSession(session)
+            (_event, sess) => {
+              setSession(sess);
+              if (sess) {
+                const accepted =
+                  window.localStorage.getItem(
+                    "athlete_expense_disclaimer_v1"
+                  ) === "true";
+                setDisclaimerAccepted(accepted);
+              } else {
+                setDisclaimerAccepted(false);
+              }
+            }
           );
           return () => data.subscription.unsubscribe();
         }, []);
@@ -191,6 +214,14 @@
           await supabaseClient.auth.signOut();
         }
 
+        function handleAcceptDisclaimer() {
+          window.localStorage.setItem(
+            "athlete_expense_disclaimer_v1",
+            "true"
+          );
+          setDisclaimerAccepted(true);
+        }
+
         if (loading) {
           return (
             <div className="min-h-screen flex items-center justify-center text-slate-600 text-sm">
@@ -199,6 +230,7 @@
           );
         }
 
+        // Not logged in yet -> show auth form
         if (!session) {
           return (
             <div className="min-h-screen flex items-center justify-center px-4">
@@ -280,6 +312,61 @@
           );
         }
 
+        // Logged in but disclaimer not yet accepted -> show disclaimer screen
+        if (session && !disclaimerAccepted) {
+          return (
+            <div className="min-h-screen flex items-center justify-center px-4 bg-slate-100">
+              <div className="max-w-lg w-full bg-white rounded-2xl shadow p-6 text-sm">
+                <h1 className="text-xl font-semibold text-slate-900 mb-2">
+                  Legal Disclaimer
+                </h1>
+                <p className="text-xs text-slate-500 mb-4">
+                  This athlete expense tracker is provided on a best-effort
+                  basis. While we use Supabase and common security practices,
+                  <span className="font-semibold">
+                    {" "}
+                    there is no guarantee against data loss, corruption, or
+                    unauthorized access.
+                  </span>
+                </p>
+                <ul className="list-disc pl-4 text-xs text-slate-600 mb-4 space-y-1">
+                  <li>
+                    You are responsible for keeping your login credentials
+                    secure.
+                  </li>
+                  <li>
+                    You should keep your own independent backups of any critical
+                    financial or tax records.
+                  </li>
+                  <li>
+                    By continuing, you accept that if data stored in this system
+                    is lost, unavailable, or accessed by third parties,{" "}
+                    <span className="font-semibold">
+                      you use it at your own risk and the operator of this tool
+                      is not liable for any resulting loss or damage.
+                    </span>
+                  </li>
+                </ul>
+                <div className="flex justify-end gap-2 mt-4">
+                  <button
+                    onClick={handleLogout}
+                    className="px-3 py-2 rounded-xl border border-slate-300 text-xs text-slate-600 hover:bg-slate-50"
+                  >
+                    Log out
+                  </button>
+                  <button
+                    onClick={handleAcceptDisclaimer}
+                    className="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800"
+                  >
+                    I understand &amp; accept
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        }
+
+        // Logged in & disclaimer accepted -> normal app
         return (
           <div className="min-h-screen flex flex-col">
             <header className="bg-slate-900 text-white py-3">
