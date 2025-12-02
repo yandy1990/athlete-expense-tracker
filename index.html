@@ -52,6 +52,20 @@
     position: relative;
   "
 >
+     <!-- ✅ Tennis court lines go here -->
+  <div
+    style="
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.15;
+      background-image:
+        linear-gradient(to right, rgba(255,255,255,0.6) 2px, transparent 2px),
+        linear-gradient(to bottom, rgba(255,255,255,0.6) 2px, transparent 2px);
+      background-size: 180px 120px;
+    "
+  ></div>
+
     <div id="root"></div>
 
     <script type="text/babel" data-presets="env,react">
