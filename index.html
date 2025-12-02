@@ -111,6 +111,30 @@
       const AUTO_FX_CURRENCIES = ["EUR", "GBP", "JPY", "AUD", "CAD"];
       const ALL_FX_KNOWN = ["USD", ...AUTO_FX_CURRENCIES];
 
+      // ----- User Storage Quotas -----
+
+function getStorageLimitBytes(plan) {
+  // adjust for your free & paid tiers
+  if (plan === "pro") {
+    return 5 * 1024 * 1024 * 1024; // 5 GB
+  }
+  return 200 * 1024 * 1024; // 200 MB default for free tier
+}
+
+function calcUsedStorageBytes(expenses) {
+  let total = 0;
+  for (const e of expenses || []) {
+    if (Array.isArray(e.receipts)) {
+      for (const r of e.receipts) {
+        if (r && typeof r.size_bytes === "number") {
+          total += r.size_bytes;
+        }
+      }
+    }
+  }
+  return total;
+}
+
       function normalizeCurrency(code) {
         if (!code) return "";
         const upper = code.toUpperCase();
@@ -1717,6 +1741,24 @@
         }
 
         async function handleAdd(exp, files) {
+          
+          // 👇 1) DETERMINE USER PLAN
+  // For now, hardcode. Later we read from Supabase "profiles" table.
+  const plan = "free";  // change when implementing paid tiers
+
+  // 👇 2) CHECK STORAGE LIMIT BEFORE UPLOADING
+  const limitBytes = getStorageLimitBytes(plan);
+  const existingBytes = calcUsedStorageBytes(expenses);
+  const newBytes = (files || []).reduce((sum, f) => sum + (f.size || 0), 0);
+
+  if (existingBytes + newBytes > limitBytes) {
+    const limitMB = (limitBytes / (1024 * 1024)).toFixed(0);
+    alert(
+      `You are over your ${plan.toUpperCase()} plan limit of ${limitMB} MB. ` +
+      `Delete receipts or upgrade your plan to continue.`
+    );
+    return; // 🚫 STOP — do not upload or insert row
+  }
           setSaving(true);
           try {
             const { fxRate, amountUsd } = await computeFx(exp);
@@ -1782,6 +1824,7 @@
                 receiptMeta.push({
                   name: file.name,
                   type: file.type,
+                  size_bytes: file.size,
                   url: publicData.publicUrl,
                   path,
                 });
