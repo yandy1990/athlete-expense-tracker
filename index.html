@@ -250,20 +250,21 @@ function calcUsedStorageBytes(expenses) {
           );
         }
 
-       async function handleLogout() {
+   async function handleLogout() {
   try {
     const { error } = await supabaseClient.auth.signOut();
 
-    if (error) {
+    // If Supabase says "Auth session missing!", treat it as already logged out
+    if (error && !String(error.message).includes("Auth session missing")) {
       console.error("Logout error:", error);
       alert("Logout error: " + error.message);
       return;
     }
 
-    // Clear session in UI immediately
+    // Clear session in UI
     setSession(null);
 
-    // Force a full reload so Supabase re-checks session on GitHub Pages
+    // Force a full reload so the app comes back in logged-out state
     window.location.reload();
   } catch (err) {
     console.error("Unexpected logout error:", err);
