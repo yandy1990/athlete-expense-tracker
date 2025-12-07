@@ -1642,6 +1642,7 @@ function calcUsedStorageBytes(expenses) {
         const [expenses, setExpenses] = useState([]);
         const [loading, setLoading] = useState(true);
         const [saving, setSaving] = useState(false);
+	const [plan, setPlan] = useState("free"); // 👈 add this if not already there
 
         const [filters, setFilters] = useState({
           from: "",
@@ -1670,6 +1671,30 @@ function calcUsedStorageBytes(expenses) {
         useEffect(() => {
           loadExpenses();
         }, [session.user.id]);
+
+
+  // ---- Storage usage + plan info ----
+  const usedBytes = useMemo(
+    () => calcUsedStorageBytes(expenses),
+    [expenses]
+  );
+  const currentPlan = plan || "free";
+  const limitBytes = getStorageLimitBytes(currentPlan);
+  const usedMB = usedBytes / (1024 * 1024);
+  const limitMB = limitBytes / (1024 * 1024);
+  const usedPct =
+    limitBytes > 0 ? Math.min(100, (usedBytes / limitBytes) * 100) : 0;
+
+  function handleUpgradeClick() {
+    if (currentPlan === "pro") {
+      alert("You are already on the Pro plan.");
+      return;
+    }
+    alert(
+      "Upgrade to Pro coming soon.\n\nFor now, contact us to increase your storage limit."
+    );
+  }
+
 
         const filteredExpenses = useMemo(() => {
           return expenses.filter((e) => {
@@ -1875,20 +1900,70 @@ function calcUsedStorageBytes(expenses) {
 
         return (
           <main className="max-w-5xl mx-auto px-4 py-6 flex-1">
-            <div className="mb-4 bg-white rounded-2xl shadow p-4 md:p-6">
-              <h2 className="text-lg font-semibold text-slate-800 mb-1">
-                Overview
-              </h2>
-              <p className="text-sm text-slate-500 mb-2">
-                Data is stored centrally in Supabase. Currency is stored in
-                native form and, where possible, converted to USD using live FX
-                (Frankfurter API) or your manual rates.
-              </p>
-              <p className="text-xs text-slate-600">
-                Total entries:{" "}
-                <span className="font-semibold">{expenses.length}</span>
-              </p>
-            </div>
+              <div className="mb-4 bg-white rounded-2xl shadow p-4 md:p-6">
+    <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+      {/* Left: overview text */}
+      <div>
+        <h2 className="text-lg font-semibold text-slate-800 mb-1">
+          Overview
+        </h2>
+        <p className="text-sm text-slate-500 mb-2">
+          Data is stored centrally in Supabase. Currency is stored in
+          native form and, where possible, converted to USD using live FX
+          (Frankfurter API) or your manual rates.
+        </p>
+        <p className="text-xs text-slate-600">
+          Total entries:{" "}
+          <span className="font-semibold">{expenses.length}</span>
+        </p>
+        <p className="mt-1 text-[11px] text-slate-500">
+          Current plan:{" "}
+          <span className="font-semibold uppercase">{currentPlan}</span>
+        </p>
+      </div>
+
+      {/* Right: storage meter + upgrade button */}
+      <div className="w-full md:w-64">
+        <div className="flex items-center justify-between text-[11px] text-slate-500 mb-1">
+          <span>Storage used</span>
+          <span>
+            {usedMB.toFixed(1)} MB / {limitMB.toFixed(0)} MB (
+            {usedPct.toFixed(0)}%)
+          </span>
+        </div>
+        <div className="h-2.5 w-full bg-slate-200 rounded-full overflow-hidden">
+          <div
+            className={
+              "h-2.5 rounded-full transition-all " +
+              (usedPct > 90
+                ? "bg-red-500"
+                : usedPct > 70
+                ? "bg-amber-500"
+                : "bg-emerald-500")
+            }
+            style={{ width: `${usedPct}%` }}
+          ></div>
+        </div>
+
+        {currentPlan === "free" && (
+          <button
+            type="button"
+            onClick={handleUpgradeClick}
+            className="mt-3 w-full inline-flex items-center justify-center px-3 py-2 rounded-xl bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800"
+          >
+            Upgrade to Pro for more storage
+          </button>
+        )}
+
+        {currentPlan === "pro" && (
+          <p className="mt-3 text-[11px] text-emerald-600 font-medium text-right">
+            Pro plan active – expanded storage enabled.
+          </p>
+        )}
+      </div>
+    </div>
+  </div>
+
 
             <ExpenseForm onAdd={handleAdd} saving={saving} />
 
