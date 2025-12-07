@@ -280,6 +280,15 @@ function calcUsedStorageBytes(expenses) {
           setDisclaimerAccepted(true);
         }
 
+
+function handleFeedbackScroll() {
+  const el = document.getElementById("feedback-section");
+  if (el) {
+    el.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+}
+
+
         if (loading) {
           return (
             <div className="min-h-screen flex items-center justify-center text-slate-600 text-sm">
@@ -460,6 +469,16 @@ function calcUsedStorageBytes(expenses) {
                     Signed in as {session.user.email}
                   </div>
                 </div>
+
+<div className="flex items-center gap-2">
+      <button
+        type="button"
+        onClick={handleFeedbackScroll}
+        className="px-3 py-1 rounded-xl bg-slate-700 text-[11px] hover:bg-slate-600"
+      >
+        Feedback
+      </button>
+
                 <button
                   onClick={handleLogout}
                   className="px-3 py-1 rounded-xl bg-slate-700 text-[11px] hover:bg-slate-600"
@@ -467,6 +486,8 @@ function calcUsedStorageBytes(expenses) {
                   Log out
                 </button>
               </div>
+ </div>
+
             </header>
             {children(session)}
           </div>
@@ -1663,6 +1684,124 @@ function calcUsedStorageBytes(expenses) {
         );
       }
 
+// ----- Feedback Section (Web3Forms) -----
+function FeedbackSection({ userEmail }) {
+  const [message, setMessage] = React.useState("");
+  const [contact, setContact] = React.useState("");
+  const [status, setStatus] = React.useState("idle"); // idle | sending | success | error
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    if (!message.trim()) {
+      alert("Please type some feedback first.");
+      return;
+    }
+
+    setStatus("sending");
+
+    try {
+      const formData = {
+        access_key: "76ce33fe-3e89-464e-97c6-7dc404dc67d2", // 👈 replace this
+        subject: "Xpenseez / bacKHand tennis Feedback",
+        message,
+        contact,
+        app_user_email: userEmail || "",
+        from_page: window.location.href,
+      };
+
+      const res = await fetch("https://api.web3forms.com/submit", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify(formData),
+      });
+
+      if (res.ok) {
+        setStatus("success");
+        setMessage("");
+        setContact("");
+      } else {
+        console.error("Web3Forms error:", res.status);
+        setStatus("error");
+      }
+    } catch (err) {
+      console.error("Feedback submit error:", err);
+      setStatus("error");
+    }
+  }
+
+  return (
+    <div 
+id="feedback-section"
+className="bg-white rounded-2xl shadow p-4 md:p-6 mb-10">
+      <h2 className="text-lg font-semibold text-slate-800 mb-1">
+        Feedback
+      </h2>
+      <p className="text-xs text-slate-500 mb-3">
+        Tell us what you’d like improved in Athlete Expenses / bacKHand
+        Tennis. This goes directly to the developer.
+      </p>
+
+      <form onSubmit={handleSubmit} className="space-y-3 text-sm">
+        <div>
+          <label className="block text-xs font-medium text-slate-700 mb-1">
+            Your feedback
+          </label>
+          <textarea
+            rows={3}
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
+            placeholder="What's working well? What's confusing or missing?"
+          />
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-slate-700 mb-1">
+            Contact (optional)
+          </label>
+          <input
+            type="text"
+            value={contact}
+            onChange={(e) => setContact(e.target.value)}
+            className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
+            placeholder="Email, WhatsApp, or leave blank"
+          />
+        </div>
+
+        <div className="flex items-center justify-between gap-3">
+          <button
+            type="submit"
+            disabled={status === "sending"}
+            className={
+              "px-4 py-2 rounded-xl text-xs font-semibold " +
+              (status === "sending"
+                ? "bg-slate-400 text-white cursor-not-allowed"
+                : "bg-slate-900 text-white hover:bg-slate-800")
+            }
+          >
+            {status === "sending" ? "Sending..." : "Send feedback"}
+          </button>
+
+          {status === "success" && (
+            <span className="text-[11px] text-emerald-600">
+              Thanks! Feedback sent.
+            </span>
+          )}
+          {status === "error" && (
+            <span className="text-[11px] text-red-600">
+              Something went wrong. Try again later.
+            </span>
+          )}
+        </div>
+      </form>
+    </div>
+  );
+}
+
+
       // ----- App -----
       function App({ session }) {
         const [expenses, setExpenses] = useState([]);
@@ -2013,10 +2152,15 @@ function calcUsedStorageBytes(expenses) {
                 />
                 <ExportPanel expenses={filteredExpenses} />
                 <TournamentDashboard expenses={filteredExpenses} />
+
+
                 <ExpenseTable
                   expenses={filteredExpenses}
                   onDelete={handleDelete}
                 />
+{/* 👇 New feedback card */}
+        <FeedbackSection userEmail={session.user.email} />
+
               </>
             )}
           </main>
