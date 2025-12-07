@@ -250,9 +250,26 @@ function calcUsedStorageBytes(expenses) {
           );
         }
 
-        async function handleLogout() {
-          await supabaseClient.auth.signOut();
-        }
+       async function handleLogout() {
+  try {
+    const { error } = await supabaseClient.auth.signOut();
+
+    if (error) {
+      console.error("Logout error:", error);
+      alert("Logout error: " + error.message);
+      return;
+    }
+
+    // Clear session in UI immediately
+    setSession(null);
+
+    // Force a full reload so Supabase re-checks session on GitHub Pages
+    window.location.reload();
+  } catch (err) {
+    console.error("Unexpected logout error:", err);
+    alert("Unexpected logout error: " + (err.message || err));
+  }
+}
 
         function handleAcceptDisclaimer() {
           window.localStorage.setItem(
@@ -358,6 +375,14 @@ function calcUsedStorageBytes(expenses) {
             {mode === "login" ? "Log in" : "Sign up"}
           </button>
         </form>
+
+<p className="mt-4 text-[14px] text-slate-600 text-center tracking-wide">
+  <span className="italic">Powered by</span>{" "}
+  <span className="font-semibold text-slate-600">
+    bacKHand tennis<sup>®</sup> 
+  </span>
+</p>
+
 
         <p className="mt-4 text-[10px] text-slate-400 text-center">
           Data stored securely with Supabase. We never share or sell your data.
@@ -1928,7 +1953,7 @@ function calcUsedStorageBytes(expenses) {
           <span>Storage used</span>
           <span>
             {usedMB.toFixed(1)} MB / {limitMB.toFixed(0)} MB (
-            {usedPct.toFixed(0)}%)
+            {usedPct.toFixed(1)}%)
           </span>
         </div>
         <div className="h-2.5 w-full bg-slate-200 rounded-full overflow-hidden">
